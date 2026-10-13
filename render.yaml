@@ -1,0 +1,55 @@
+# Render Blueprint: New + > Blueprint > pick this repo.
+databases:
+  - name: appdev-db
+    plan: free
+    databaseName: appdev
+    user: appdev
+
+services:
+  # Laravel API (Docker)
+  - type: web
+    name: appdev-api
+    runtime: docker
+    plan: free
+    rootDir: react-laravel-crud/backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false          # paste output of: php artisan key:generate --show
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: appdev-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: FRONTEND_URL
+        sync: false          # e.g. https://appdev-web.onrender.com
+
+  # React (Vite) static site
+  - type: web
+    name: appdev-web
+    runtime: static
+    rootDir: react-laravel-crud/frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false          # e.g. https://appdev-api.onrender.com/api
+    routes:
+      - type: rewrite        # SPA fallback
+        source: /*
+        destination: /index.html
